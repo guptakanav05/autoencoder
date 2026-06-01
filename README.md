@@ -112,6 +112,47 @@ After running, check the `results/` folder for:
 4. **Latent space clusters** should be more distinct for CNN models (better feature learning)
 5. **Trade-off**: Smaller bottleneck = more compression but blurrier reconstructions
 
+## Results
+
+All 4 models were trained for **20 epochs** on the EMNIST Letters dataset. Below is a summary of findings:
+
+### Performance Summary
+
+| Model | Bottleneck | Architecture | BatchNorm | Relative Performance |
+|-------|-----------|-------------|-----------|---------------------|
+| FC Autoencoder v1 | 32 | 784→256→128→32→128→256→784 | ❌ | Baseline |
+| FC Autoencoder v2 | 64 | 784→512→256→128→64→128→256→512→784 | ✅ | Better than FC v1 |
+| CNN Autoencoder v1 | 32 | Conv(1→16→32)→FC→32 | ❌ | Better than both FC models |
+| **CNN Autoencoder v2** | **64** | **Conv(1→32→64→128)→FC→64** | **✅** | **Best overall** |
+
+### Key Findings
+
+1. **CNN models consistently outperformed FC models** — CNN architectures achieved lower reconstruction loss because they preserve spatial structure and understand that neighboring pixels are related, unlike FC models which treat the image as a flat vector of 784 numbers.
+
+2. **Larger bottleneck (64) gave better reconstruction than smaller (32)** — Bottleneck=32 compresses 784 pixels into 32 numbers (~24× compression), while bottleneck=64 provides ~12× compression. The larger bottleneck preserves more information, producing sharper reconstructions at the cost of less compression.
+
+3. **BatchNorm models (v2) showed smoother and more stable training curves** — The v2 models with Batch Normalization converged faster and more smoothly compared to their v1 counterparts, preventing activations from becoming too large or too small during training.
+
+4. **t-SNE latent space visualizations showed clear clustering of letter classes** — Similar letters (e.g., B & D, O & Q) were grouped together in the latent space. CNN models produced much better-separated clusters than FC models, indicating superior feature learning.
+
+5. **Best performing model: CNN Autoencoder v2** — This is expected since it has the most capacity: deeper convolutional network, larger bottleneck (64), and BatchNorm for training stability.
+
+6. **Reconstruction is lossy but meaningful** — Some information is inevitably lost during compression, but the important structural features of each letter are preserved, confirming the model learned good representations.
+
+### Design Justifications
+
+- **FC vs CNN**: FC models flatten the image and lose spatial relationships. CNNs use 2D filters to detect local patterns (edges, curves), making them inherently better for image tasks.
+- **ReLU + Sigmoid**: ReLU (`max(0, x)`) is used in hidden layers for simplicity and effectiveness. Sigmoid is used in the output layer to map values to [0, 1] matching the pixel range.
+- **MaxPool2d in encoder / ConvTranspose2d in decoder**: MaxPool reduces spatial dimensions (28→14→7) for compression; transposed convolutions upsample back (7→14→28) for reconstruction.
+- **MSE Loss**: Measures pixel-by-pixel difference between original and reconstructed images — the natural choice for reconstruction tasks.
+- **Adam optimizer (lr=0.001)**: Adaptive learning rate optimizer that converges faster than vanilla SGD.
+
+### What Was Learned
+
+- Autoencoders are **unsupervised** — no labels are used during training; the model simply learns to compress and decompress. Labels are only used for latent space visualization.
+- There is a fundamental **compression vs quality trade-off** — more compression means blurrier reconstructions.
+- **20 epochs** was sufficient for all models to converge.
+
 ## Dataset
 
 - **EMNIST Letters Split**: Handwritten A-Z characters
